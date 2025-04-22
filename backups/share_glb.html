@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3D Model Viewer with Time Slider</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Viewer with Fixed Layout</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     body {
@@ -30,7 +30,7 @@
     model-viewer {
       flex: 1;
       max-height: 800px;
-      min-width: 200px;
+      min-width: 200px;	
       height: 800px;
       background-color: #5C4033;
     }
@@ -71,11 +71,7 @@
       background-color: #0056b3;
     }
 
-    input[type="range"] {
-      width: 300px;
-      margin-top: 10px;
-    }
-
+    /* Ensure horizontal layout on small screens */
     @media screen and (max-width: 600px) {
       .container {
         flex-wrap: nowrap;
@@ -89,18 +85,17 @@
   </style>
 </head>
 <body>
-
   <div class="container">
-    <!-- 3D Model Viewer -->
-    <model-viewer
+    <!-- Model Viewer Component -->
+    <model-viewer 
       id="model-viewer"
-      src="compressed.glb"
-      alt="A 3D animated model"
-      ar
-      ar-modes="webxr scene-viewer quick-look"
+      src="compressed.glb" 
+      alt="A 3D animated model" 
+      ar 
+      ar-modes="webxr scene-viewer quick-look" 
       ar-scale="auto"
-      camera-controls
-      autoplay
+      camera-controls 
+      autoplay 
       shadow-intensity="1">
     </model-viewer>
 
@@ -110,30 +105,16 @@
     </div>
   </div>
 
-  <!-- Controls -->
+  <!-- Play/Pause Button -->
   <div class="button-container">
     <button id="play-pause-button">Pause</button>
-    <br/>
-    <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0">
   </div>
 
   <script>
+    // JavaScript to toggle play/pause
     const modelViewer = document.getElementById('model-viewer');
     const playPauseButton = document.getElementById('play-pause-button');
-    const timeSlider = document.getElementById('time-slider');
 
-    let animationLength = 0;
-
-    modelViewer.addEventListener('load', () => {
-      const animation = modelViewer.model?.animations?.[0];
-      if (animation) {
-        animationLength = animation.duration;
-        timeSlider.max = animationLength;
-        timeSlider.value = 0;
-      }
-    });
-
-    // Toggle play/pause
     playPauseButton.addEventListener('click', () => {
       if (modelViewer.paused) {
         modelViewer.play();
@@ -143,21 +124,6 @@
         playPauseButton.textContent = 'Play';
       }
     });
-
-    // Update slider position as animation plays
-    modelViewer.addEventListener('timeupdate', () => {
-      if (!timeSlider.dragging) {
-        timeSlider.value = modelViewer.currentTime;
-      }
-    });
-
-    // Let user scrub animation via slider
-    timeSlider.addEventListener('input', () => {
-      modelViewer.pause();  // Pause when scrubbing
-      modelViewer.currentTime = parseFloat(timeSlider.value);
-      playPauseButton.textContent = 'Play';
-    });
   </script>
-
 </body>
 </html>

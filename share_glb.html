@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3D Model Viewer with Time Slider</title>
+  <title>3D Model Viewer with Slider, Time, and Speed</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     body {
@@ -56,7 +56,7 @@
       text-align: center;
     }
 
-    button {
+    button, select {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -65,15 +65,22 @@
       background-color: #007bff;
       color: white;
       transition: background-color 0.3s;
+      margin-right: 10px;
     }
 
-    button:hover {
+    button:hover, select:hover {
       background-color: #0056b3;
     }
 
     input[type="range"] {
       width: 300px;
       margin-top: 10px;
+    }
+
+    .time-display {
+      color: white;
+      margin-top: 5px;
+      font-size: 14px;
     }
 
     @media screen and (max-width: 600px) {
@@ -113,50 +120,97 @@
   <!-- Controls -->
   <div class="button-container">
     <button id="play-pause-button">Pause</button>
+
+    <!-- Speed Control -->
+    <select id="speed-control">
+      <option value="0.25">0.25x</option>
+      <option value="0.5">0.5x</option>
+      <option value="1" selected>1x</option>
+      <option value="2">2x</option>
+      <option value="4">4x</option>
+    </select>
+
+    <!-- Slider -->
     <br/>
     <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0">
+    <div class="time-display" id="time-display">0:00 / 0:00</div>
   </div>
 
   <script>
     const modelViewer = document.getElementById('model-viewer');
     const playPauseButton = document.getElementById('play-pause-button');
     const timeSlider = document.getElementById('time-slider');
+    const speedControl = document.getElementById('speed-control');
+    const timeDisplay = document.getElementById('time-display');
 
-    let animationLength = 0;
+    let animationDuration = 0;
+    let mixer = null;
+    let clipAction = null;
+    let isScrubbing = false;
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
 
     modelViewer.addEventListener('load', () => {
-      const animation = modelViewer.model?.animations?.[0];
-      if (animation) {
-        animationLength = animation.duration;
-        timeSlider.max = animationLength;
+      const animations = modelViewer.model?.animations;
+      mixer = modelViewer.animationMixer;
+
+      if (animations && animations.length > 0) {
+        clipAction = mixer.clipAction(animations[0]);
+        animationDuration = animations[0].duration;
+        timeSlider.max = animationDuration;
         timeSlider.value = 0;
+        clipAction.play();
+        clipAction.paused = true;
+        updateTimeDisplay(0);
       }
     });
 
-    // Toggle play/pause
-    playPauseButton.addEventListener('click', () => {
-      if (modelViewer.paused) {
-        modelViewer.play();
-        playPauseButton.textContent = 'Pause';
-      } else {
-        modelViewer.pause();
-        playPauseButton.textContent = 'Play';
+    modelViewer.addEventListener('tick', () => {
+      if (!clipAction || !mixer) return;
+
+      if (!isScrubbing) {
+        timeSlider.value = clipAction.time;
+        updateTimeDisplay(clipAction.time);
       }
+
+      mixer.update(0); // sync scene to animation
     });
 
-    // Update slider position as animation plays
-    modelViewer.addEventListener('timeupdate', () => {
-      if (!timeSlider.dragging) {
-        timeSlider.value = modelViewer.currentTime;
-      }
-    });
-
-    // Let user scrub animation via slider
     timeSlider.addEventListener('input', () => {
-      modelViewer.pause();  // Pause when scrubbing
-      modelViewer.currentTime = parseFloat(timeSlider.value);
-      playPauseButton.textContent = 'Play';
+      if (clipAction) {
+        isScrubbing = true;
+        clipAction.paused = true;
+        clipAction.time = parseFloat(timeSlider.value);
+        mixer.update(0);
+        updateTimeDisplay(clipAction.time);
+      }
     });
+
+    timeSlider.addEventListener('change', () => {
+      isScrubbing = false;
+    });
+
+    playPauseButton.addEventListener('click', () => {
+      if (!clipAction) return;
+
+      clipAction.paused = !clipAction.paused;
+      playPauseButton.textContent = clipAction.paused ? 'Play' : 'Pause';
+    });
+
+    speedControl.addEventListener('change', () => {
+      const speed = parseFloat(speedControl.value);
+      if (clipAction) {
+        clipAction.setEffectiveTimeScale(speed);
+      }
+    });
+
+    function updateTimeDisplay(currentTime) {
+      timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(animationDuration)}`;
+    }
   </script>
 
 </body>

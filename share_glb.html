@@ -1,155 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>GLB Viewer with Controls</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Viewer with Fixed Layout</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     body {
       margin: 0;
-      background-color: #5C4033;
-      font-family: sans-serif;
-      color: white;
+      padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      font-family: Arial, sans-serif;
+      background-color: #5C4033;
+      height: 100vh;
     }
-    canvas {
-      display: block;
+
+    .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      width: 90%;
+      max-width: 1200px;
     }
-    .controls {
-      margin-top: 10px;
+
+    model-viewer {
+      flex: 1;
+      max-height: 800px;
+      min-width: 200px;	
+      height: 800px;
+      background-color: #5C4033;
+    }
+
+    .image-container {
+      flex: 1;
+      max-width: 400px;
+      min-width: 200px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .image-container img {
+      max-width: 100%;
+      height: 600px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .button-container {
+      margin-top: 20px;
       text-align: center;
     }
-    button, select {
-      padding: 8px 16px;
-      margin: 5px;
+
+    button {
+      padding: 10px 20px;
       font-size: 16px;
-      border-radius: 5px;
+      cursor: pointer;
       border: none;
+      border-radius: 5px;
       background-color: #007bff;
       color: white;
-      cursor: pointer;
+      transition: background-color 0.3s;
     }
-    input[type="range"] {
-      width: 300px;
+
+    button:hover {
+      background-color: #0056b3;
     }
-    .time-display {
-      margin-top: 5px;
+
+    /* Ensure horizontal layout on small screens */
+    @media screen and (max-width: 600px) {
+      .container {
+        flex-wrap: nowrap;
+        flex-direction: row;
+        overflow-x: auto;
+      }
+      body {
+        height: auto;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <!-- Model Viewer Component -->
+    <model-viewer 
+      id="model-viewer"
+      src="compressed.glb" 
+      alt="A 3D animated model" 
+      ar 
+      ar-modes="webxr scene-viewer quick-look" 
+      ar-scale="auto"
+      camera-controls 
+      autoplay 
+      shadow-intensity="1">
+    </model-viewer>
 
-<canvas id="scene"></canvas>
+    <!-- Image Section -->
+    <div class="image-container">
+      <img src="colormap.png" alt="">
+    </div>
+  </div>
 
-<div class="controls">
-  <button id="play-pause">Pause</button>
-  <select id="speed">
-    <option value="0.25">0.25x</option>
-    <option value="0.5">0.5x</option>
-    <option value="1" selected>1x</option>
-    <option value="2">2x</option>
-    <option value="4">4x</option>
-  </select>
-  <br>
-  <input type="range" id="timeline" min="0" max="1" value="0" step="0.01">
-  <div class="time-display" id="time-display">0:00 / 0:00</div>
-</div>
+  <!-- Play/Pause Button -->
+  <div class="button-container">
+    <button id="play-pause-button">Pause</button>
+  </div>
 
-<script type="module">
-  import * as THREE from 'https://cdn.skypack.dev/three';
-  import { OrbitControls } from 'https://cdn.skypack.dev/three/examples/jsm/controls/OrbitControls.js';
-  import { GLTFLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/GLTFLoader.js';
+  <script>
+    // JavaScript to toggle play/pause
+    const modelViewer = document.getElementById('model-viewer');
+    const playPauseButton = document.getElementById('play-pause-button');
 
-  const canvas = document.getElementById('scene');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(3, 2, 5);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(5, 10, 7.5);
-  scene.add(light);
-
-  const loader = new GLTFLoader();
-  let mixer, action, animationDuration = 0;
-  let clock = new THREE.Clock();
-
-  loader.load('compressed.glb', (gltf) => {
-    const model = gltf.scene;
-    scene.add(model);
-
-    mixer = new THREE.AnimationMixer(model);
-    action = mixer.clipAction(gltf.animations[0]);
-    animationDuration = gltf.animations[0].duration;
-    action.play();
-
-    document.getElementById('timeline').max = animationDuration;
-    document.getElementById('time-display').textContent = `0:00 / ${formatTime(animationDuration)}`;
-  });
-
-  function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-
-  const timeline = document.getElementById('timeline');
-  const playPauseBtn = document.getElementById('play-pause');
-  const speedSelect = document.getElementById('speed');
-  const timeDisplay = document.getElementById('time-display');
-
-  let paused = false;
-
-  playPauseBtn.onclick = () => {
-    paused = !paused;
-    playPauseBtn.textContent = paused ? 'Play' : 'Pause';
-  };
-
-  speedSelect.onchange = () => {
-    if (action) {
-      action.setEffectiveTimeScale(parseFloat(speedSelect.value));
-    }
-  };
-
-  timeline.addEventListener('input', () => {
-    if (action) {
-      action.time = parseFloat(timeline.value);
-      mixer.update(0); // force update
-      timeDisplay.textContent = `${formatTime(action.time)} / ${formatTime(animationDuration)}`;
-    }
-  });
-
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-
-    if (mixer && !paused) {
-      const delta = clock.getDelta();
-      mixer.update(delta);
-
-      timeline.value = action.time;
-      timeDisplay.textContent = `${formatTime(action.time)} / ${formatTime(animationDuration)}`;
-    }
-
-    renderer.render(scene, camera);
-  }
-
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-</script>
-
+    playPauseButton.addEventListener('click', () => {
+      if (modelViewer.paused) {
+        modelViewer.play();
+        playPauseButton.textContent = 'Pause';
+      } else {
+        modelViewer.pause();
+        playPauseButton.textContent = 'Play';
+      }
+    });
+  </script>
 </body>
 </html>
